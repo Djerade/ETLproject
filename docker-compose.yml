@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+  # Spark Master
+  spark:
+    image: bitnami/spark:latest
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+    ports:
+      - "7077:7077" # Spark cluster
+      - "8080:8080" # Spark UI
+    volumes:
+      - ./spark_jobs:/opt/spark/jobs
+      - ./data:/opt/spark/data
+      - ./lakehouse:/opt/spark/lakehouse
+    networks:
+      - etl-net
+
+  # Spark Worker
+  spark-worker:
+    image: bitnami/spark:latest
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+    depends_on:
+      - spark
+    networks:
+      - etl-net
+
+  # Airflow avec DAG
+  airflow:
+    image: puckel/docker-airflow:1.10.9
+    container_name: airflow
+    restart: always
+    depends_on:
+      - spark
+    environment:
+      - LOAD_EX=y
+      - AIRFLOW__CORE__EXECUTOR=SequentialExecutor
+      - EXECUTOR=SequentialExecutor
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - ./dags:/usr/local/airflow/dags
+    ports:
+      - "8081:8080" # Airflow Web UI
+    networks:
+      - etl-net
+
+  # PostgreSQL pour Airflow
+  postgres:
+    image: postgres:13
+    container_name: airflow-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    networks:
+      - etl-net
+
+networks:
+  etl-net:
+    driver: bridge
