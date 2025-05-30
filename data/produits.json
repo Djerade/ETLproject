@@ -1,0 +1,9 @@
+[
+  { "produit_id": 101, "nom": "PC", "categorie": "Informatique", "prix": 500 },
+  {
+    "produit_id": 102,
+    "nom": "Clé USB",
+    "categorie": "Accessoires",
+    "prix": 20
+  }
+]
